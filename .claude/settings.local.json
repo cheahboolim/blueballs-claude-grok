@@ -1,0 +1,20 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm create:*)",
+      "Bash(npx sv:*)",
+      "Bash(npm install)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(cat:*)",
+      "WebFetch(domain:supabase.com)",
+      "Bash(npm run dev)",
+      "WebFetch(domain:docs.stripe.com)",
+      "Bash(npx svelte-check:*)",
+      "Bash(find:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
