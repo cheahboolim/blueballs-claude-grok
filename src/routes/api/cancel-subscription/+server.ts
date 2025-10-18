@@ -3,14 +3,19 @@ import type { RequestHandler } from './$types';
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import Stripe from 'stripe';
-import { STRIPE_SECRET_KEY } from '$env/static/private';
 
-const stripe = new Stripe(STRIPE_SECRET_KEY, {
-	apiVersion: '2025-02-24.acacia'
-});
-
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, platform }) => {
 	try {
+		// Get environment variables from Cloudflare Pages
+		const stripeSecretKey = (platform as any)?.env?.STRIPE_SECRET_KEY;
+		if (!stripeSecretKey) {
+			return json({ success: false, error: 'Stripe configuration missing' }, { status: 500 });
+		}
+
+		const stripe = new Stripe(stripeSecretKey, {
+			apiVersion: '2025-02-24.acacia'
+		});
+
 		// Get the authorization header
 		const authHeader = request.headers.get('authorization');
 		if (!authHeader) {

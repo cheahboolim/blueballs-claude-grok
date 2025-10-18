@@ -2,14 +2,21 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { supabase } from '$lib/supabase';
 import Stripe from 'stripe';
-import { STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET } from '$env/static/private';
 
-const stripe = new Stripe(STRIPE_SECRET_KEY, {
-	apiVersion: '2025-02-24.acacia'
-});
-
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, platform }) => {
 	try {
+		// Get environment variables from Cloudflare Pages
+		const stripeSecretKey = (platform as any)?.env?.STRIPE_SECRET_KEY;
+		const stripeWebhookSecret = (platform as any)?.env?.STRIPE_WEBHOOK_SECRET;
+
+		if (!stripeSecretKey || !stripeWebhookSecret) {
+			return json({ error: 'Stripe configuration missing' }, { status: 500 });
+		}
+
+		const stripe = new Stripe(stripeSecretKey, {
+			apiVersion: '2025-02-24.acacia'
+		});
+
 		const body = await request.text();
 		const signature = request.headers.get('stripe-signature');
 
@@ -21,7 +28,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		let event: Stripe.Event;
 
 		try {
-			event = stripe.webhooks.constructEvent(body, signature, STRIPE_WEBHOOK_SECRET);
+			event = stripe.webhooks.constructEvent(body, signature, stripeWebhookSecret);
 		} catch (err) {
 			console.error('Webhook signature verification failed:', err);
 			return json({ error: 'Invalid signature' }, { status: 400 });
@@ -31,7 +38,7 @@ export const POST: RequestHandler = async ({ request }) => {
 		switch (event.type) {
 			case 'checkout.session.completed': {
 				const session = event.data.object as Stripe.Checkout.Session;
-				await handleCheckoutComplete(session);
+				await handleCheckoutComplete(session, stripe);
 				break;
 			}
 
@@ -70,7 +77,7 @@ export const POST: RequestHandler = async ({ request }) => {
 	}
 };
 
-async function handleCheckoutComplete(session: Stripe.Checkout.Session) {
+async function handleCheckoutComplete(session: Stripe.Checkout.Session, stripe: Stripe) {
 	const userId = session.metadata?.user_id;
 	const tier = session.metadata?.tier as 'mid' | 'big';
 

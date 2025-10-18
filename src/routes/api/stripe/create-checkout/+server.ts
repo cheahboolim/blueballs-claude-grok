@@ -3,14 +3,22 @@ import type { RequestHandler } from './$types';
 import { createClient } from '@supabase/supabase-js';
 import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import Stripe from 'stripe';
-import { STRIPE_SECRET_KEY, STRIPE_PRICE_ID_MID, STRIPE_PRICE_ID_BIG } from '$env/static/private';
 
-const stripe = new Stripe(STRIPE_SECRET_KEY, {
-	apiVersion: '2025-02-24.acacia'
-});
-
-export const POST: RequestHandler = async ({ request, url }) => {
+export const POST: RequestHandler = async ({ request, url, platform }) => {
 	try {
+		// Get environment variables from Cloudflare Pages
+		const stripeSecretKey = (platform as any)?.env?.STRIPE_SECRET_KEY;
+		const stripePriceIdMid = (platform as any)?.env?.STRIPE_PRICE_ID_MID;
+		const stripePriceIdBig = (platform as any)?.env?.STRIPE_PRICE_ID_BIG;
+
+		if (!stripeSecretKey || !stripePriceIdMid || !stripePriceIdBig) {
+			return json({ success: false, error: 'Stripe configuration missing' }, { status: 500 });
+		}
+
+		const stripe = new Stripe(stripeSecretKey, {
+			apiVersion: '2025-02-24.acacia'
+		});
+
 		const { tier } = await request.json();
 
 		// Validate tier
@@ -78,8 +86,8 @@ export const POST: RequestHandler = async ({ request, url }) => {
 
 		// Define price IDs
 		const priceIds: Record<string, string> = {
-			mid: STRIPE_PRICE_ID_MID,
-			big: STRIPE_PRICE_ID_BIG
+			mid: stripePriceIdMid,
+			big: stripePriceIdBig
 		};
 
 		// Create checkout session
