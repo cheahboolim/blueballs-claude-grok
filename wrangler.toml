@@ -1,0 +1,18 @@
+name = "blueballs"
+compatibility_date = "2024-01-01"
+pages_build_output_dir = ".svelte-kit/cloudflare"
+
+[vars]
+# Environment variables will be set in Cloudflare Pages dashboard
+# PUBLIC_SUPABASE_URL = "your-supabase-url"
+# PUBLIC_SUPABASE_ANON_KEY = "your-supabase-anon-key"
+# STRIPE_PUBLISHABLE_KEY = "your-stripe-publishable-key"
+# STRIPE_SECRET_KEY = "your-stripe-secret-key"
+# STRIPE_WEBHOOK_SECRET = "your-stripe-webhook-secret"
+# STRIPE_PRICE_ID_MID = "your-mid-tier-price-id"
+# STRIPE_PRICE_ID_BIG = "your-big-tier-price-id"
+# PUBLIC_APP_URL = "https://your-domain.pages.dev"
+# VITE_GOOGLE_CLIENT_ID = "your-google-client-id"
+
+# Uncomment and set these in Cloudflare Pages dashboard under Environment variables
+# These are commented out here as they should be set securely in Cloudflare
