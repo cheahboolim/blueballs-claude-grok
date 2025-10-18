@@ -2,7 +2,6 @@ import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { uploadToR2, deleteFromR2, generateProfileImageKey, extractKeyFromUrl } from '$lib/r2';
 import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 
 // Maximum file size: 5MB
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -10,8 +9,15 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024;
 // Allowed image types
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, platform }) => {
 	try {
+		// Get environment variables from Cloudflare Pages
+		const supabaseUrl = (platform as any)?.env?.PUBLIC_SUPABASE_URL;
+		const supabaseAnonKey = (platform as any)?.env?.PUBLIC_SUPABASE_ANON_KEY;
+		
+		if (!supabaseUrl || !supabaseAnonKey) {
+			throw error(500, 'Configuration missing');
+		}
 		// Get the authorization header
 		const authHeader = request.headers.get('authorization');
 		if (!authHeader) {
@@ -20,8 +26,8 @@ export const POST: RequestHandler = async ({ request }) => {
 
 		// Create a Supabase client with the user's token
 		const supabase = createClient(
-			PUBLIC_SUPABASE_URL,
-			PUBLIC_SUPABASE_ANON_KEY,
+			supabaseUrl,
+			supabaseAnonKey,
 			{
 				global: {
 					headers: {

@@ -1,10 +1,17 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, platform }) => {
 	try {
+		// Get environment variables from Cloudflare Pages
+		const supabaseUrl = (platform as any)?.env?.PUBLIC_SUPABASE_URL;
+		const supabaseAnonKey = (platform as any)?.env?.PUBLIC_SUPABASE_ANON_KEY;
+		
+		if (!supabaseUrl || !supabaseAnonKey) {
+			return json({ success: false, error: 'Configuration missing' }, { status: 500 });
+		}
+
 		const { score, difficulty, pointsEarned } = await request.json();
 
 		// Get the authorization header
@@ -16,8 +23,8 @@ export const POST: RequestHandler = async ({ request }) => {
 		// Create a Supabase client with the user's token
 		const token = authHeader.replace('Bearer ', '');
 		const supabase = createClient(
-			PUBLIC_SUPABASE_URL,
-			PUBLIC_SUPABASE_ANON_KEY,
+			supabaseUrl,
+			supabaseAnonKey,
 			{
 				global: {
 					headers: {

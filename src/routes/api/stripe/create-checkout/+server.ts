@@ -1,7 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { createClient } from '@supabase/supabase-js';
-import { PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY } from '$env/static/public';
 import Stripe from 'stripe';
 
 export const POST: RequestHandler = async ({ request, url, platform }) => {
@@ -10,9 +9,11 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 		const stripeSecretKey = (platform as any)?.env?.STRIPE_SECRET_KEY;
 		const stripePriceIdMid = (platform as any)?.env?.STRIPE_PRICE_ID_MID;
 		const stripePriceIdBig = (platform as any)?.env?.STRIPE_PRICE_ID_BIG;
+		const supabaseUrl = (platform as any)?.env?.PUBLIC_SUPABASE_URL;
+		const supabaseAnonKey = (platform as any)?.env?.PUBLIC_SUPABASE_ANON_KEY;
 
-		if (!stripeSecretKey || !stripePriceIdMid || !stripePriceIdBig) {
-			return json({ success: false, error: 'Stripe configuration missing' }, { status: 500 });
+		if (!stripeSecretKey || !stripePriceIdMid || !stripePriceIdBig || !supabaseUrl || !supabaseAnonKey) {
+			return json({ success: false, error: 'Configuration missing' }, { status: 500 });
 		}
 
 		const stripe = new Stripe(stripeSecretKey, {
@@ -34,8 +35,8 @@ export const POST: RequestHandler = async ({ request, url, platform }) => {
 
 		// Create a Supabase client with the user's token
 		const supabase = createClient(
-			PUBLIC_SUPABASE_URL,
-			PUBLIC_SUPABASE_ANON_KEY,
+			supabaseUrl,
+			supabaseAnonKey,
 			{
 				global: {
 					headers: {
