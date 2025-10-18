@@ -4,7 +4,11 @@
   import { invalidate } from "$app/navigation";
   import { user, profile, loading } from "$lib/stores/auth";
   import { theme } from "$lib/stores/theme";
-  import { notifications, unreadCount, notificationChannel } from "$lib/stores/notifications";
+  import {
+    notifications,
+    unreadCount,
+    notificationChannel,
+  } from "$lib/stores/notifications";
   import type { Notification } from "$lib/stores/notifications";
   import { goto } from "$app/navigation";
   import { page } from "$app/stores";
@@ -86,7 +90,7 @@
         }
       }
       if (_session?.expires_at !== session?.expires_at) {
-        invalidate('supabase:auth');
+        invalidate("supabase:auth");
       }
     });
 
@@ -153,21 +157,23 @@
     if (!$user) return;
 
     const { data, error } = await supabase
-      .from('notifications')
-      .select(`
+      .from("notifications")
+      .select(
+        `
         *,
         from_profile:from_user_id (
           username,
           profile_picture_url
         )
-      `)
-      .eq('user_id', $user.id)
-      .order('created_at', { ascending: false })
+      `
+      )
+      .eq("user_id", $user.id)
+      .order("created_at", { ascending: false })
       .limit(20);
 
     if (data) {
       $notifications = data;
-      $unreadCount = data.filter(n => !n.read).length;
+      $unreadCount = data.filter((n) => !n.read).length;
     }
   }
 
@@ -176,30 +182,36 @@
 
     const channel = supabase
       .channel(`notifications-${$user.id}`)
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'notifications',
-        filter: `user_id=eq.${$user.id}`
-      }, async (payload) => {
-        // Load the notification with profile data
-        const { data } = await supabase
-          .from('notifications')
-          .select(`
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${$user.id}`,
+        },
+        async (payload) => {
+          // Load the notification with profile data
+          const { data } = await supabase
+            .from("notifications")
+            .select(
+              `
             *,
             from_profile:from_user_id (
               username,
               profile_picture_url
             )
-          `)
-          .eq('id', payload.new.id)
-          .single();
+          `
+            )
+            .eq("id", payload.new.id)
+            .single();
 
-        if (data) {
-          $notifications = [data, ...$notifications];
-          $unreadCount = $unreadCount + 1;
+          if (data) {
+            $notifications = [data, ...$notifications];
+            $unreadCount = $unreadCount + 1;
+          }
         }
-      })
+      )
       .subscribe();
 
     $notificationChannel = channel;
@@ -211,16 +223,16 @@
     const session = await supabase.auth.getSession();
     const token = session.data.session?.access_token;
 
-    await fetch('/api/notifications/mark-read', {
-      method: 'POST',
+    await fetch("/api/notifications/mark-read", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
       },
-      body: JSON.stringify({ notificationId })
+      body: JSON.stringify({ notificationId }),
     });
 
-    $notifications = $notifications.map(n =>
+    $notifications = $notifications.map((n) =>
       n.id === notificationId ? { ...n, read: true } : n
     );
     $unreadCount = Math.max(0, $unreadCount - 1);
@@ -232,15 +244,15 @@
     const session = await supabase.auth.getSession();
     const token = session.data.session?.access_token;
 
-    await fetch('/api/notifications/mark-all-read', {
-      method: 'POST',
+    await fetch("/api/notifications/mark-all-read", {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${token}`
-      }
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
     });
 
-    $notifications = $notifications.map(n => ({ ...n, read: true }));
+    $notifications = $notifications.map((n) => ({ ...n, read: true }));
     $unreadCount = 0;
   }
 
@@ -254,13 +266,13 @@
 
   function getNotificationIcon(type: string) {
     switch (type) {
-      case 'friend_request':
-      case 'friend_accepted':
+      case "friend_request":
+      case "friend_accepted":
         return Users;
-      case 'chat_message':
+      case "chat_message":
         return MessageCircle;
-      case 'level_up':
-      case 'rank_up':
+      case "level_up":
+      case "rank_up":
         return Trophy;
       default:
         return Bell;
