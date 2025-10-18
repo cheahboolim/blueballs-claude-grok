@@ -33,7 +33,7 @@
   let notificationMenuOpen = false;
   let isMobile = false;
 
-  onMount(() => {
+  onMount(async () => {
     // Check viewport size
     isMobile = window.innerWidth <= 768;
 
@@ -87,19 +87,6 @@
       }
       if (_session?.expires_at !== session?.expires_at) {
         invalidate('supabase:auth');
-      }
-    });
-        await loadProfile(session.user.id);
-        await loadNotifications();
-        subscribeToNotifications();
-      } else {
-        $profile = null;
-        $notifications = [];
-        $unreadCount = 0;
-        if ($notificationChannel) {
-          await supabase.removeChannel($notificationChannel);
-          $notificationChannel = null;
-        }
       }
     });
 
