@@ -3,17 +3,14 @@ import { createServerClient } from '@supabase/ssr';
 import type { Handle } from '@sveltejs/kit';
 
 export const handle: Handle = async ({ event, resolve }) => {
-	/**
-	 * Creates a Supabase client specific to this server request.
-	 *
-	 * The Supabase client is configured to use cookies to persist the user session.
-	 */
 	event.locals.supabase = createServerClient(PUBLIC_SUPABASE_URL, PUBLIC_SUPABASE_ANON_KEY, {
 		cookies: {
 			getAll: () => event.cookies.getAll(),
 			/**
-			 * SvelteKit's cookies API requires explicitly setting the path to '/'
-			 * to persist cookies across all routes.
+			 * Note: You have to add the `path` variable to the
+			 * set and remove method due to sveltekit's cookie API
+			 * requiring this to be set, setting the path to `/`
+			 * will replicate previous/standard behaviour (https://kit.svelte.dev/docs/types#public-types-cookies)
 			 */
 			setAll: (cookiesToSet) => {
 				cookiesToSet.forEach(({ name, value, options }) => {
@@ -24,35 +21,26 @@ export const handle: Handle = async ({ event, resolve }) => {
 	});
 
 	/**
-	 * Unlike `supabase.auth.getSession()`, which returns the session _without_
-	 * validating the JWT, this function validates the JWT before returning the session.
-	 *
-	 * This is important for security because it ensures the user is actually authenticated
-	 * before allowing access to protected resources.
+	 * Unlike `supabase.auth.getSession`, which is unsafe on the server because it
+	 * doesn't validate the JWT, this function validates the JWT by first calling
+	 * `getUser` and aborts early if the JWT signature is invalid.
 	 */
 	event.locals.safeGetSession = async () => {
 		const {
 			data: { user },
 			error
 		} = await event.locals.supabase.auth.getUser();
-
 		if (error) {
 			return { session: null, user: null };
 		}
-
 		const {
 			data: { session }
 		} = await event.locals.supabase.auth.getSession();
-
 		return { session, user };
 	};
 
 	return resolve(event, {
 		filterSerializedResponseHeaders(name) {
-			/**
-			 * Supabase libraries use the `content-range` and `x-supabase-api-version`
-			 * headers, so we need to tell SvelteKit to pass them through.
-			 */
 			return name === 'content-range' || name === 'x-supabase-api-version';
 		}
 	});

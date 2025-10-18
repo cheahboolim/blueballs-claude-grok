@@ -1,7 +1,7 @@
 <script lang="ts">
   import "../app.css";
   import { onMount, onDestroy } from "svelte";
-  import { supabase } from "$lib/supabase";
+  import { invalidate } from "$app/navigation";
   import { user, profile, loading } from "$lib/stores/auth";
   import { theme } from "$lib/stores/theme";
   import { notifications, unreadCount, notificationChannel } from "$lib/stores/notifications";
@@ -24,6 +24,9 @@
     LayoutDashboard,
     Check,
   } from "lucide-svelte";
+
+  let { data, children } = $props();
+  let { supabase, session } = $derived(data);
 
   let rightMenuOpen = false;
   let leftMenuOpen = false;
@@ -55,26 +58,37 @@
       }
     });
 
-    // Get initial session
-    (async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
-      if (session) {
-        $user = session.user;
-        await loadProfile(session.user.id);
-        await loadNotifications();
-        subscribeToNotifications();
-      }
-      $loading = false;
-    })();
+    // Set initial user from session
+    $user = session?.user ?? null;
+    if (session?.user) {
+      await loadProfile(session.user.id);
+      await loadNotifications();
+      subscribeToNotifications();
+    }
+    $loading = false;
 
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      $user = session?.user ?? null;
-      if (session?.user) {
+    } = supabase.auth.onAuthStateChange(async (_event, _session) => {
+      $user = _session?.user ?? null;
+      if (_session?.user) {
+        await loadProfile(_session.user.id);
+        await loadNotifications();
+        subscribeToNotifications();
+      } else {
+        $profile = null;
+        $notifications = [];
+        $unreadCount = 0;
+        if ($notificationChannel) {
+          await supabase.removeChannel($notificationChannel);
+          $notificationChannel = null;
+        }
+      }
+      if (_session?.expires_at !== session?.expires_at) {
+        invalidate('supabase:auth');
+      }
+    });
         await loadProfile(session.user.id);
         await loadNotifications();
         subscribeToNotifications();
@@ -300,8 +314,10 @@
           >
             <Bell size={20} />
             {#if $unreadCount > 0}
-              <span class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
-                {$unreadCount > 9 ? '9+' : $unreadCount}
+              <span
+                class="absolute -top-1 -right-1 bg-red-500 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center"
+              >
+                {$unreadCount > 9 ? "9+" : $unreadCount}
               </span>
             {/if}
           </button>
@@ -565,19 +581,32 @@
                       class="w-10 h-10 rounded-full object-cover"
                     />
                   {:else}
-                    <div class="w-10 h-10 rounded-full bg-primary dark:bg-accent flex items-center justify-center">
-                      <svelte:component this={IconComponent} size={20} class="text-white" />
+                    <div
+                      class="w-10 h-10 rounded-full bg-primary dark:bg-accent flex items-center justify-center"
+                    >
+                      <svelte:component
+                        this={IconComponent}
+                        size={20}
+                        class="text-white"
+                      />
                     </div>
                   {/if}
                 </div>
                 <div class="flex-1 min-w-0">
                   <p class="text-sm dark:text-white">{notification.message}</p>
                   <p class="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                    {new Date(notification.created_at).toLocaleDateString()} at {new Date(notification.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                    {new Date(notification.created_at).toLocaleDateString()} at {new Date(
+                      notification.created_at
+                    ).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </p>
                 </div>
                 {#if !notification.read}
-                  <div class="w-2 h-2 bg-primary rounded-full flex-shrink-0 mt-2"></div>
+                  <div
+                    class="w-2 h-2 bg-primary rounded-full flex-shrink-0 mt-2"
+                  ></div>
                 {/if}
               </div>
             </button>
@@ -588,27 +617,47 @@
   </aside>
 
   <!-- Main Content -->
-  <main class="flex-1 pt-16 pb-16 {leftMenuOpen && !isMobile ? 'ml-64' : ''} transition-all">
+  <main
+    class="flex-1 pt-16 pb-16 {leftMenuOpen && !isMobile
+      ? 'ml-64'
+      : ''} transition-all"
+  >
     <slot />
   </main>
 
   <!-- Footer -->
-  <footer class="bg-gray-100 dark:bg-dark-secondary border-t border-gray-200 dark:border-gray-700 py-4 {leftMenuOpen && !isMobile ? 'ml-64' : ''} transition-all mt-auto">
+  <footer
+    class="bg-gray-100 dark:bg-dark-secondary border-t border-gray-200 dark:border-gray-700 py-4 {leftMenuOpen &&
+    !isMobile
+      ? 'ml-64'
+      : ''} transition-all mt-auto"
+  >
     <div class="max-w-7xl mx-auto px-4">
-      <div class="flex flex-col md:flex-row items-center justify-between gap-2 text-sm text-gray-600 dark:text-gray-400">
+      <div
+        class="flex flex-col md:flex-row items-center justify-between gap-2 text-sm text-gray-600 dark:text-gray-400"
+      >
         <div class="text-center md:text-left">
           © {new Date().getFullYear()} BlueBalls.lol. All rights reserved.
         </div>
         <div class="flex items-center gap-4">
-          <a href="/privacy" class="hover:text-primary dark:hover:text-blue-400 transition">
+          <a
+            href="/privacy"
+            class="hover:text-primary dark:hover:text-blue-400 transition"
+          >
             Privacy Policy
           </a>
           <span class="text-gray-400">|</span>
-          <a href="/terms" class="hover:text-primary dark:hover:text-blue-400 transition">
+          <a
+            href="/terms"
+            class="hover:text-primary dark:hover:text-blue-400 transition"
+          >
             Terms of Service
           </a>
           <span class="text-gray-400">|</span>
-          <a href="mailto:hello@blueballs.lol" class="hover:text-primary dark:hover:text-blue-400 transition">
+          <a
+            href="mailto:hello@blueballs.lol"
+            class="hover:text-primary dark:hover:text-blue-400 transition"
+          >
             Contact
           </a>
         </div>
